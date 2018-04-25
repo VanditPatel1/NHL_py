@@ -20,7 +20,7 @@ def get_players(team_link, team):
         for p in players:
             packet = list()
             packet.append(p['person']['id'])
-            first, last = p['person']['fullName'].split(" ", 1)
+            first, last = p['person']['fullName'].replace("'", "-").split(" ", 1)
             packet.append(first)
             packet.append(last)
             packet.append(team)
