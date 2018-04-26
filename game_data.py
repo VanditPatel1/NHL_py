@@ -1,7 +1,7 @@
 import requests
-import matplotlib.pyplot as plt
-import pandas as pd
-import seaborn as sns
+#import matplotlib.pyplot as plt
+#import pandas as pd
+#import seaborn as sns
 import json
 from database_connect import db_connect
 
@@ -138,9 +138,18 @@ def get_all_shots(link, db):
                 print ("Could not get coordinates")
 
 
-            packet['period'] = play['about']['period']
-            packet['time'] = play['about']['periodTime']
-            packet['shot_type'] = play['result']['secondaryType']
+            try:
+                packet['period'] = play['about']['period']
+                packet['time'] = play['about']['periodTime']
+            except:
+                print ("Could not shot timings")
+
+            try:
+                packet['shot_type'] = play['result']['secondaryType']
+
+            except:
+                print ("Could not get shot type")
+
             packet['goal'] = False
             packet['strength'] = None
 
@@ -162,17 +171,12 @@ def get_all_shots(link, db):
 
             try:
                 db.add_row(packet, 'shots')
-                try_again = False
+
             except Exception as ex:
                 print ("####### " + str(packet['player_id']) + " #######")
                 print ("Player probably did not exists")
                 add_player(packet['player_id'])
                 db.add_row(packet, 'shots')
-                try_again = True
-
-            #if try_again:
-            #    add_player(packet['player_id'])
-            #    db.add_row(packet, 'shots')
 
 
 def get_all_game_links():
