@@ -26,6 +26,25 @@ def get_json(link):
     else:
         return data
 
+def add_player(number):
+    print ("ADDING PLAYER")
+    db = db_connect()
+    data = get_json('https://statsapi.web.nhl.com/api/v1/people/'+str(number))
+    packet = dict()
+    packet['id'] = data['people'][0]['id']
+    packet['first_name'] = data['people'][0]['firstName']
+    packet['last_name'] = data['people'][0]['lastName']
+
+    try:
+        packet['number'] = data['people'][0]['primaryNumber']
+        packet['position'] = data['people'][0]['primaryPosition']['name']
+        packet['team'] = data['people'][0]['currentTeam']['name']
+    except:
+        print ("Not on a team probably")
+
+    db.add_row(packet, 'player_meta')
+
+
 def get_all_players():
 
     data = get_json(NHL_URL+TEAMS)
@@ -66,6 +85,7 @@ def game_meta(game):
         away = game['gameData']['teams']['away']['abbreviation']
         home = game['gameData']['teams']['home']['abbreviation']
         time = game['gameData']['datetime']['dateTime']
+        game_id = game['gameData']['game']['pk']
 
     except:
         print ("Could not get meta...")
@@ -73,15 +93,77 @@ def game_meta(game):
 
     else:
         meta['game'] = away + ' @ ' + home
-        meta['datetime'] = time
+        meta['date'] = time
+        meta['game_id'] = game_id
         return meta
 
-def get_all_shots(link):
+
+
+def get_all_shots(link, db):
 
     data = get_json(link)
-    game_data = game_meta(data)
-    print (game_data)
 
+
+    live_data = data['liveData']['plays']['allPlays']
+
+    for play in live_data:
+        packet = game_meta(data)
+        type = play['result']['event']
+
+        """ Period 5 is shootout, 1-4 are regulation and overtime """
+        if type in ['Goal', 'Shot'] and play['about']['period'] < 5:
+
+            """ Get Shooter, Goalie and Assist Player ID's """
+            for p in play['players']:
+
+                if p['playerType'] in ["Shooter", "Scorer"]:
+                    packet['player_id'] = p['player']['id']
+
+                elif p['playerType'] == "Goalie":
+                    packet['goalie_id'] = p['player']['id']
+
+                elif p['playerType'] == "Assist":
+                    if 'assist_1' in packet:
+                        packet['assist_2'] = p['player']['id']
+                    else:
+                        packet['assist_1'] = p['player']['id']
+                else:
+                    pass
+
+            packet['x_coord'] = play['coordinates']['x']
+            packet['y_coord'] = play['coordinates']['y']
+            packet['period'] = play['about']['period']
+            packet['time'] = play['about']['periodTime']
+            packet['shot_type'] = play['result']['secondaryType']
+            packet['goal'] = False
+            packet['strength'] = None
+
+            if 'assist_1' not in packet:
+                packet['assist_1'] = None
+            if 'assist_2' not in packet:
+                packet['assist_2'] = None
+
+            packet['game_winning'] = None
+            packet['empty_net'] = None
+
+
+            if type == 'Goal':
+                packet['goal'] = True
+                packet['strength'] = play['result']['strength']['name']
+                packet['game_winning'] = play['result']['gameWinningGoal']
+                packet['empty_net'] = play['result']['emptyNet']
+
+
+            try:
+                db.add_row(packet, 'shots')
+                try_again = False
+            except Exception as ex:
+                print ("Player probably did not exists")
+                try_again = True
+
+            if try_again:
+                add_player(packet['player_id'])
+                db.add_row(packet, 'shots')
 
 
 def get_all_game_links():
@@ -90,10 +172,11 @@ def get_all_game_links():
 
     for date in dates:
         games = date['games']
+        db = db_connect()
 
         for game in games:
             link = game['link']
-            get_all_shots(BASE+link)
+            get_all_shots(BASE+link, db)
 
 
 def get_game(game_id):

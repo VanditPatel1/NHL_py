@@ -25,24 +25,37 @@ class db_connect():
 
         except:
             print ("Could not create table...")
+            self.conn.rollback()
             raise
 
         else:
-            conn.commit()
+            self.conn.commit()
             cur.close()
 
     def add_row(self, packet, table):
+
+        keys = packet.keys()
+        columns = ','.join(keys)
+        values = ','.join(['%({})s'.format(k) for k in keys])
+        insert = 'INSERT INTO {0} ({1}) VALUES ({2})'.format(table, columns, values)
         try:
             cur = self.conn.cursor()
-            cur.execute("""INSERT INTO {0} VALUES {1} on conflict do nothing""".format(table, tuple(packet)))
+            res = cur.mogrify(insert, packet)
+            cur.execute(res)
 
-        except:
-            print ("Could not add to table {}, values {}").format(table, packet)
+        except Exception as ex:
+            print (ex)
+            self.conn.rollback()
+            raise
 
         else:
-            conn.commit()
+            self.conn.commit()
             cur.close()
 
 
+
+
 if __name__ == '__main__':
-    create_table()
+    db = db_connect()
+    #db.create_table(player_meta)
+    db.create_table(shot_table)
