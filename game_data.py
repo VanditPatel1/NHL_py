@@ -130,8 +130,14 @@ def get_all_shots(link, db):
                 else:
                     pass
 
-            packet['x_coord'] = play['coordinates']['x']
-            packet['y_coord'] = play['coordinates']['y']
+            try:
+                packet['x_coord'] = play['coordinates']['x']
+                packet['y_coord'] = play['coordinates']['y']
+
+            except:
+                print ("Could not get coordinates")
+
+
             packet['period'] = play['about']['period']
             packet['time'] = play['about']['periodTime']
             packet['shot_type'] = play['result']['secondaryType']
@@ -158,12 +164,15 @@ def get_all_shots(link, db):
                 db.add_row(packet, 'shots')
                 try_again = False
             except Exception as ex:
+                print ("####### " + str(packet['player_id']) + " #######")
                 print ("Player probably did not exists")
-                try_again = True
-
-            if try_again:
                 add_player(packet['player_id'])
                 db.add_row(packet, 'shots')
+                try_again = True
+
+            #if try_again:
+            #    add_player(packet['player_id'])
+            #    db.add_row(packet, 'shots')
 
 
 def get_all_game_links():
