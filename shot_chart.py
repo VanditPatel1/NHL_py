@@ -1,10 +1,11 @@
 import plotly.graph_objs as pplot
 from plotly.offline import init_notebook_mode, plot
-from rink import rink_shape
+from rink import rink_shapes
+import plotly.plotly as py
 
 
 layout = pplot.Layout(
-    shapes=rink_shape
+    shapes=rink_shapes
 )
 
 xx = [1, 2, 3]
@@ -19,6 +20,10 @@ point_trace = pplot.Scatter(
     )
 )
 
-fig = pplot.Figure(data=point_trace, layout=layout)
+fig = pplot.Figure(data=[point_trace], layout=layout)
 
-plot(fig)
+#py.image.save_as(fig, filename='test.png')
+
+#from IPython.display import Image
+#Image('test.png')
+plot(fig), #image='png', image_filename='test', output_type='file')
